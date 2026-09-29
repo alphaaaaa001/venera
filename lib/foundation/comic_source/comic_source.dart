@@ -244,35 +244,42 @@ class ComicSource {
 
   /// Get settings dynamically from JavaScript source.
   /// This allows sources to use getters for dynamic settings that can change at runtime.
+  ///
+  /// Returns `null` when the JavaScript value can't be read, leaving the fallback
+  /// to the caller (usually the snapshot taken when the source was loaded).
   Map<String, Map<String, dynamic>>? getSettingsDynamic() {
     try {
       var value = JsEngine().runCode("ComicSource.sources.$key.settings");
-      if (value is Map) {
-        var newMap = <String, Map<String, dynamic>>{};
-        for (var e in value.entries) {
-          if (e.key is! String) {
-            continue;
-          }
-          var v = <String, dynamic>{};
-          for (var e2 in e.value.entries) {
-            if (e2.key is! String) {
-              continue;
-            }
-            var v2 = e2.value;
-            if (v2 is JSInvokable) {
-              v2 = JSAutoFreeFunction(v2);
-            }
-            v[e2.key] = v2;
-          }
-          newMap[e.key] = v;
-        }
-        return newMap;
+      if (value is! Map) {
+        return null;
       }
-      return null;
+      return _normalizeSettings(value);
     } catch (e) {
       Log.error("ComicSource", "Failed to get dynamic settings: $e");
-      return settings;
+      return null;
     }
+  }
+
+  static Map<String, Map<String, dynamic>> _normalizeSettings(Map value) {
+    var newMap = <String, Map<String, dynamic>>{};
+    for (var e in value.entries) {
+      if (e.key is! String || e.value is! Map) {
+        continue;
+      }
+      var v = <String, dynamic>{};
+      for (var e2 in (e.value as Map).entries) {
+        if (e2.key is! String) {
+          continue;
+        }
+        var v2 = e2.value;
+        if (v2 is JSInvokable) {
+          v2 = JSAutoFreeFunction(v2);
+        }
+        v[e2.key] = v2;
+      }
+      newMap[e.key] = v;
+    }
+    return newMap;
   }
 
   ComicSource(

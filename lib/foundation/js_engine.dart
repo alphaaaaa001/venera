@@ -166,8 +166,12 @@ class JsEngine with _JSEngineApi, JsUiApi, Init {
             String key = message["key"];
             String settingKey = message["setting_key"];
             var source = ComicSource.find(key)!;
-            return source.data["settings"]?[settingKey] ??
-                source.settings?[settingKey]!['default'] ??
+            var savedValue = source.data["settings"]?[settingKey];
+            if (savedValue != null) {
+              return savedValue;
+            }
+            var settings = source.getSettingsDynamic() ?? source.settings;
+            return settings?[settingKey]?['default'] ??
                 (throw "Setting not found: $settingKey");
           case "isLogged":
             return ComicSource.find(message["key"])!.isLogged;
